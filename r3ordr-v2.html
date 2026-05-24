@@ -1,0 +1,813 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>R3ORDR RUN</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #030303;
+  --white: #f0f0f0;
+  --gray: #888;
+  --dim: #333;
+  --accent: #ffffff;
+}
+* { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+html, body {
+  background:var(--bg);
+  background-image: radial-gradient(circle at center, #111 0%, #000 100%);
+  color:var(--white);
+  font-family:'Share Tech Mono', monospace;
+  display:flex; flex-direction:column;
+  align-items:center; justify-content:center;
+  width:100%; height:100%;
+  overflow:hidden;
+}
+
+#game-wrapper {
+  display: flex;
+  flex-direction: column;
+  width: min(800px, 100vw);
+  box-shadow: 0 0 40px rgba(255, 255, 255, 0.05), 0 0 10px rgba(255, 255, 255, 0.02);
+  border: 1px solid #333;
+  border-radius: 4px;
+  overflow: hidden;
+  position: relative;
+}
+
+#hud {
+  display:flex; justify-content:space-between; align-items:center;
+  padding:12px 20px;
+  background:#0a0a0a;
+  border-bottom: 1px solid #222;
+  font-size:11px; letter-spacing:2px; color:#aaa;
+}
+#hud .logo {
+  font-family:'Orbitron',sans-serif;
+  font-weight:900; font-size:clamp(12px,3vw,18px);
+  color:#fff; letter-spacing:4px;
+  text-shadow: 0 0 10px rgba(255,255,255,0.3);
+}
+#hud .hud-mid { text-align:center; }
+#hud .hud-right { text-align:right; }
+#hud .val { color:#fff; font-size:clamp(12px,3vw,16px); font-weight:bold; font-family:'Orbitron',sans-serif; }
+
+#gameCanvas {
+  display:block; width:100%;
+  image-rendering:pixelated;
+  background: #000;
+  cursor:none;
+  touch-action:none;
+}
+
+#bottomBar {
+  display:flex; justify-content:space-between; align-items:center;
+  padding:10px 20px;
+  background:#0a0a0a;
+  border-top: 1px solid #222;
+  font-size:10px; letter-spacing:2px; color:#555;
+}
+#bottomBar a { color:#666; text-decoration:none; transition: color 0.2s;}
+#bottomBar a:hover { color:#fff; text-shadow: 0 0 5px #fff; }
+
+#overlay {
+  position:fixed; inset:0;
+  display:flex; flex-direction:column;
+  align-items:center; justify-content:center;
+  background:rgba(0,0,0,0.95);
+  backdrop-filter: blur(3px);
+  z-index:50;
+  gap:0;
+}
+.ov-corner {
+  position:absolute; width:18px; height:18px;
+  border-color:#555; border-style:solid;
+}
+.ov-corner.tl { top:5%; left:5%; border-width:2px 0 0 2px; }
+.ov-corner.tr { top:5%; right:5%; border-width:2px 2px 0 0; }
+.ov-corner.bl { bottom:5%; left:5%; border-width:0 0 2px 2px; }
+.ov-corner.br { bottom:5%; right:5%; border-width:0 2px 2px 0; }
+
+.ov-logo {
+  font-family:'Orbitron',sans-serif;
+  font-weight:900; font-size:clamp(28px,8vw,52px); letter-spacing:clamp(4px,2vw,10px);
+  color:#fff; margin-bottom:2px;
+  text-shadow: 0 0 20px rgba(255,255,255,0.2);
+}
+.ov-divider { width:min(320px,80vw); height:1px; background:#333; margin:16px 0; }
+
+.ov-input {
+  background:rgba(255,255,255,0.02);
+  border:1px solid #333; border-bottom:2px solid #555;
+  color:#fff; font-family:'Share Tech Mono',monospace;
+  font-size:clamp(16px,5vw,22px); letter-spacing:4px;
+  text-align:center; width:min(300px,85vw); padding:12px;
+  outline:none; transition: all 0.2s;
+}
+.ov-input:focus { border-bottom-color:#fff; background:rgba(255,255,255,0.05); }
+.ov-input::placeholder { color:#444; }
+
+.ov-btn {
+  margin-top:28px;
+  padding:14px 48px;
+  background:transparent;
+  border:1px solid #fff;
+  color:#fff; font-family:'Orbitron',sans-serif;
+  font-size:clamp(11px,3vw,14px); font-weight:700; letter-spacing:6px;
+  cursor:pointer; transition:all .2s;
+  clip-path:polygon(12px 0%,100% 0%,calc(100% - 12px) 100%,0% 100%);
+  touch-action:manipulation;
+}
+.ov-btn:hover, .ov-btn:active { background:#fff; color:#000; box-shadow: 0 0 15px rgba(255,255,255,0.5); }
+.ov-btn.secondary {
+  margin-top:12px;
+  border-color:#555; color:#888; font-size:clamp(10px,2.5vw,12px);
+  padding:10px 32px;
+}
+.ov-btn.secondary:hover, .ov-btn.secondary:active { background:#222; color:#fff; border-color:#fff; }
+
+.ov-score-big {
+  font-family:'Orbitron',sans-serif;
+  font-size:clamp(32px,10vw,56px); font-weight:900;
+  color:#fff; letter-spacing:clamp(2px,1.5vw,6px);
+  margin:10px 0; text-shadow: 0 0 15px rgba(255,255,255,0.3);
+}
+.ov-stat { font-size:12px; letter-spacing:3px; color:#666; margin:4px 0; }
+.ov-stat span { color:#fff; font-weight:bold; }
+
+.share-card {
+  width:min(360px,88vw);
+  border:1px solid #444;
+  padding:24px;
+  background:#0a0a0a;
+  margin:16px 0;
+  text-align:left;
+  position:relative;
+  box-shadow: 0 5px 20px rgba(0,0,0,0.5);
+}
+.share-card::before {
+  content:''; position:absolute;
+  top:0;left:0;right:0;bottom:0;
+  background:repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(255,255,255,0.01) 3px,rgba(255,255,255,0.01) 4px);
+  pointer-events:none;
+}
+.share-card .sc-logo { font-family:'Orbitron',sans-serif; font-weight:900; font-size:16px; letter-spacing:4px; color:#fff; }
+.share-card .sc-nick { font-size:22px; color:#fff; margin:8px 0 4px; letter-spacing:3px; font-weight:bold;}
+.share-card .sc-score { font-family:'Orbitron',sans-serif; font-size:36px; font-weight:700; color:#fff; }
+.share-card .sc-label { font-size:10px; color:#666; letter-spacing:3px; margin-bottom:2px; }
+.share-card .sc-divider { height:1px; background:#222; margin:16px 0; }
+.share-card .sc-row { display:flex; justify-content:space-between; font-size:10px; color:#555; letter-spacing:2px; margin-top:12px; }
+
+@keyframes scan{0%{top:0%}100%{top:100%}}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
+@keyframes flicker{0%,96%,100%{opacity:1}97%{opacity:0.4}98%{opacity:1}99%{opacity:0.6}}
+.blink{animation:blink 1.1s step-end infinite;}
+.flicker{animation:flicker 4s ease-in-out infinite;}
+
+#touch {
+  display:none;
+  position:fixed; bottom:0; left:0; right:0;
+  padding:10px 16px;
+  padding-bottom:max(14px, env(safe-area-inset-bottom));
+  justify-content:space-between; align-items:flex-end;
+  z-index:30; pointer-events:none;
+}
+@media (hover:none) and (pointer:coarse) { #touch { display:flex; } }
+@media(max-width:850px){ #touch{display:flex;} #game-wrapper{ border:none; box-shadow:none; } }
+.tbtn {
+  width:clamp(52px,13vw,64px); height:clamp(52px,13vw,64px);
+  background:rgba(255,255,255,0.06);
+  border:1px solid rgba(255,255,255,0.15);
+  color:#fff; font-size:clamp(16px,5vw,22px);
+  display:flex; align-items:center; justify-content:center;
+  border-radius:4px; pointer-events:auto;
+  user-select:none; -webkit-tap-highlight-color:transparent;
+  touch-action:none;
+}
+.tbtn:active { background:rgba(255,255,255,0.22); transform:scale(0.94); }
+#tJump {
+  width:clamp(60px,15vw,72px); height:clamp(60px,15vw,72px);
+  border-radius:50%; font-size:clamp(10px,3vw,12px); letter-spacing:1px;
+  font-family:'Share Tech Mono',monospace;
+  background:rgba(255,255,255,0.1); border:2px solid rgba(255,255,255,0.25);
+}
+</style>
+</head>
+<body>
+
+<div id="game-wrapper">
+  <div id="hud">
+    <div class="logo">R3ORDR</div>
+    <div class="hud-mid">
+      <div style="font-size:10px;color:#666;letter-spacing:2px; margin-bottom:2px;">SCORE</div>
+      <div class="val" id="scoreEl">00000</div>
+    </div>
+    <div class="hud-right">
+      <div style="font-size:10px;color:#666;letter-spacing:2px; margin-bottom:2px;">LIVES // <span id="nickEl" style="color:#888;"></span></div>
+      <div class="val" id="livesEl" style="color:#ff3333; text-shadow: 0 0 5px rgba(255,50,50,0.5);">❙❙❙</div>
+    </div>
+  </div>
+  
+  <canvas id="gameCanvas" width="800" height="420"></canvas>
+  
+  <div id="bottomBar">
+    <span>// REORIENT · RECONNECT · REORDER</span>
+    <span>MADE BY <a href="https://twitter.com/traderibo123" target="_blank">@traderibo123</a></span>
+  </div>
+</div>
+
+<div id="overlay">
+  <div class="ov-corner tl"></div><div class="ov-corner tr"></div>
+  <div class="ov-corner bl"></div><div class="ov-corner br"></div>
+
+  <div id="ovStart" style="width:100%;max-width:700px;padding:0 20px;position:relative;">
+    <style>
+      @media(max-width:520px){
+        #startGrid{grid-template-columns:1fr !important;}
+        .start-sep{display:none !important;}
+        #startLeft{display:none !important;}
+        #ovStart{padding:0 12px !important;}
+      }
+    </style>
+    <div id="scanBar" style="position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,rgba(255,255,255,0.4),transparent);animation:scan 3s linear infinite;pointer-events:none;"></div>
+    
+    <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #222;padding-bottom:12px;margin-bottom:20px;">
+      <div>
+        <div style="font-size:10px;letter-spacing:3px;color:#555;">// GAME_MODULE</div>
+        <div class="flicker" style="font-family:'Orbitron',sans-serif;font-weight:900;font-size:48px;letter-spacing:8px;color:#fff;line-height:1; text-shadow: 0 0 15px rgba(255,255,255,0.3);">R3ORDR</div>
+        <div style="font-size:10px;letter-spacing:3px;color:#666;margin-top:4px;">// REORIENT &nbsp; RECONNECT &nbsp; REORDER</div>
+      </div>
+      <div style="text-align:right;">
+        <div style="font-size:10px;letter-spacing:2px;color:#555;">SIGNAL_ID</div>
+        <div style="font-size:12px;letter-spacing:2px;color:#888;">R3_RUN</div>
+        <div style="margin-top:10px;font-size:10px;color:#555;letter-spacing:2px;">STATUS</div>
+        <div style="font-size:12px;color:#fff;letter-spacing:3px;" class="blink">● ACTIVE</div>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1px 1fr;gap:0 30px;width:100%;" id="startGrid">
+      <div style="padding:12px 0;" id="startLeft">
+        <div style="font-size:10px;letter-spacing:3px;color:#666;margin-bottom:8px;">+ RUNE_LIBRARY +</div>
+        <div style="width:72px;height:72px;border:1px solid #333;display:flex;align-items:center;justify-content:center;margin:12px 0; background:rgba(255,255,255,0.02);">
+          <svg width="40" height="40" viewBox="0 0 40 40">
+            <rect width="40" height="40" fill="none"/>
+            <rect x="17" y="4" width="6" height="32" fill="#fff" opacity="0.9"/>
+            <rect x="4" y="17" width="32" height="6" fill="#fff" opacity="0.9"/>
+            <rect x="14" y="1" width="4" height="6" fill="#fff" opacity="0.5"/>
+            <rect x="22" y="1" width="4" height="6" fill="#fff" opacity="0.5"/>
+          </svg>
+        </div>
+        <div style="font-size:10px;color:#888;line-height:2.2;letter-spacing:1px; margin-top:12px;">
+          <span style="color:#fff;">SIGNAL</span> → CONNECT<br>
+          <span style="color:#fff;">MOVE</span> → SURVIVE<br>
+          <span style="color:#fff;">COLLECT</span> → SCORE<br>
+          <span style="color:#fff;">STOMP</span> → REORDER
+        </div>
+      </div>
+
+      <div class="start-sep" style="background:#222;align-self:stretch;"></div>
+
+      <div style="display:flex;flex-direction:column;justify-content:center;">
+        <div style="font-size:10px;letter-spacing:3px;color:#666;margin-bottom:12px;">+ ENTER YOUR SIGNAL_ID +</div>
+        <input class="ov-input" id="nickInput" placeholder="YOUR_HANDLE" maxlength="16" autocomplete="off" spellcheck="false" />
+
+        <button class="ov-btn" onclick="startGame()" style="width:100%;clip-path:none;padding:16px 0;font-size:14px;letter-spacing:6px; margin-top:20px;">
+          ▶ &nbsp; INITIALIZE &nbsp; SIGNAL
+        </button>
+
+        <div style="margin-top:24px;border:1px solid #222;padding:12px; background:rgba(255,255,255,0.02);">
+          <div style="font-size:10px;letter-spacing:3px;color:#666;margin-bottom:8px;">CONTROLS</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px 12px;font-size:10px;color:#888;letter-spacing:2px;">
+            <span>← → &nbsp; MOVE</span>
+            <span>SPACE &nbsp; JUMP</span>
+            <span>STOMP &nbsp; KILL</span>
+            <span>REACH END WIN</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div style="display:flex;justify-content:space-between;align-items:center;border-top:1px solid #222;margin-top:24px;padding-top:12px;font-size:10px;color:#555;letter-spacing:2px;">
+      <span>WE REORIENT TO ESCAPE THE LOOP.</span>
+      <span class="blink" style="color:#444;">■</span>
+      <span>WE RECONNECT TO THE SIGNAL.</span>
+    </div>
+  </div>
+
+  <div id="ovGameOver" style="display:none;flex-direction:column;align-items:center;">
+    <div style="font-size:12px;letter-spacing:6px;color:#ff3333;margin-bottom:12px; text-shadow:0 0 10px rgba(255,50,50,0.5);">SIGNAL LOST</div>
+    <div class="ov-logo" style="font-size:56px; color:#fff;">GAME OVER</div>
+    <div class="ov-divider"></div>
+    <div class="ov-score-big" id="goScore">00000</div>
+    <div class="ov-stat">HANDLE: <span id="goNick"></span></div>
+    <div class="ov-stat">COINS: <span id="goCoins"></span> &nbsp;|&nbsp; KILLS: <span id="goKills"></span></div>
+    <div style="display:flex;gap:16px;margin-top:24px;">
+      <button class="ov-btn" onclick="startGame()">▶ RETRY</button>
+      <button class="ov-btn secondary" onclick="showShareScreen()">SHARE X</button>
+    </div>
+  </div>
+
+  <div id="ovWin" style="display:none;flex-direction:column;align-items:center;">
+    <div style="font-size:12px;letter-spacing:6px;color:#33ff33;margin-bottom:12px; text-shadow:0 0 10px rgba(50,255,50,0.5);">SIGNAL ACQUIRED</div>
+    <div class="ov-logo" style="font-size:56px;color:#fff;">REORDERED</div>
+    <div class="ov-divider"></div>
+    <div class="ov-score-big" id="winScore">00000</div>
+    <div class="ov-stat">HANDLE: <span id="winNick"></span></div>
+    <div class="ov-stat">COINS: <span id="winCoins"></span> &nbsp;|&nbsp; KILLS: <span id="winKills"></span></div>
+    <div style="display:flex;gap:16px;margin-top:24px;">
+      <button class="ov-btn" onclick="startGame()">▶ PLAY AGAIN</button>
+      <button class="ov-btn secondary" onclick="showShareScreen()">SHARE X</button>
+    </div>
+  </div>
+
+  <div id="ovShare" style="display:none;flex-direction:column;align-items:center;">
+    <div style="font-size:12px;letter-spacing:4px;color:#888;margin-bottom:16px;">SHARE YOUR SIGNAL</div>
+    <div class="share-card" id="shareCard">
+      <div class="sc-logo">R3ORDR RUN</div>
+      <div style="font-size:10px;color:#666;letter-spacing:2px;margin-top:4px;">// REORIENT · RECONNECT · REORDER</div>
+      <div class="sc-divider"></div>
+      <div class="sc-label">HANDLE</div>
+      <div class="sc-nick" id="scNick">—</div>
+      <div class="sc-label" style="margin-top:12px;">FINAL SCORE</div>
+      <div class="sc-score" id="scScore">00000</div>
+      <div class="sc-divider"></div>
+      <div style="display:flex;gap:24px;">
+        <div><div class="sc-label">COINS</div><div style="color:#fff;font-size:16px;font-family:'Orbitron',sans-serif;" id="scCoins">0</div></div>
+        <div><div class="sc-label">KILLS</div><div style="color:#fff;font-size:16px;font-family:'Orbitron',sans-serif;" id="scKills">0</div></div>
+        <div><div class="sc-label">STATUS</div><div style="color:#fff;font-size:16px;font-family:'Orbitron',sans-serif;" id="scStatus">—</div></div>
+      </div>
+      <div class="sc-row">
+        <span>@R3ORDR &nbsp;|&nbsp; @traderibo123</span>
+        <span>R3_RUN</span>
+      </div>
+    </div>
+    <button class="ov-btn" onclick="shareToX()" style="margin-top:16px; width:min(360px,85vw); clip-path:none;">POST TO X / TWITTER</button>
+    <button class="ov-btn secondary" onclick="backFromShare()" style="width:min(360px,85vw);">← BACK</button>
+  </div>
+</div>
+
+<div id="touch">
+  <div style="display:flex;gap:8px;pointer-events:auto;">
+    <div class="tbtn" id="tLeft">◀</div>
+    <div class="tbtn" id="tRight">▶</div>
+  </div>
+  <div class="tbtn" id="tJump">JUMP</div>
+</div>
+
+<script>
+// CANVAS SETUP
+const C = document.getElementById('gameCanvas');
+const ctx = C.getContext('2d');
+const W = 800, H = 420;
+
+function resizeCanvas(){
+  const wrapper = document.getElementById('game-wrapper');
+  const availW = Math.min(window.innerWidth, 800);
+  const availH = window.innerHeight
+    - document.getElementById('hud').offsetHeight
+    - document.getElementById('bottomBar').offsetHeight;
+  const scale = Math.min(availW / W, availH / H);
+  C.style.width  = (W * scale) + 'px';
+  C.style.height = (H * scale) + 'px';
+  wrapper.style.width = Math.min(availW, W) + 'px';
+}
+window.addEventListener('resize', resizeCanvas);
+window.addEventListener('orientationchange', ()=>setTimeout(resizeCanvas, 200));
+setTimeout(resizeCanvas, 100);
+
+// PIXEL ART
+const _ = null;
+const W1='#f0f0f0', W2='#cccccc', W3='#999999';
+const BK ='#0a0a0a', SK ='#c07840', SKL='#d4935a', SKD='#8a5228';
+const BLB='#3377ff', BLM='#1155dd', BLD='#0033bb', BLS='#002299';
+const CI ='#e0e0c8', CT ='#ff4400', CG ='#aaaaaa';
+const SH ='#228833', SHL='#33aa44', SHD='#115522';
+const PT ='#1a2a55', PTL='#253575', SO ='#111111', SOL='#2a2a2a';
+
+const SPR_STAND = [
+[BLS,  BLM,  BLB,  BLB,  BLB,  BLB,  BLD,  _,    _,    _,    _,    _,    _,    _  ],
+[BLS,  BLB,  BLB,  BLB,  BLB,  BLB,  BLB,  BLD,  _,    _,    _,    _,    _,    _  ],
+[BLD,  BLB,  BLB,  BLB,  BLM,  BLB,  BLB,  BLS,  _,    _,    _,    _,    _,    _  ],
+[_,    BK,   SK,   SK,   SK,   SK,   SK,   BK,   _,    _,    _,    _,    _,    _  ],
+[_,    BK,   SKL,  SK,   SK,   SK,   SKL,  SK,   BK,   _,    _,    _,    _,    _  ],
+[_,    BK,   BK,   BK,   BK,   SK,   BK,   BK,   BK,   BK,   CI,   CI,   CI,   CT ],
+[_,    BK,   BK,   BK,   BK,   SK,   BK,   BK,   BK,   SK,   CI,   CI,   CG,   _  ],
+[_,    _,    BK,   SK,   SK,   SK,   SK,   SK,   BK,   _,    _,    _,    _,    _  ],
+[_,    _,    BK,   SK,   BK,   BK,   SK,   SK,   BK,   _,    _,    _,    _,    _  ],
+[_,    _,    BK,   SKD,  SK,   SK,   SKD,  SK,   BK,   _,    _,    _,    _,    _  ],
+[_,    _,    SHL,  SH,   SH,   SH,   SH,   SHL,  _,    _,    _,    _,    _,    _  ],
+[_,    SHL,  SH,   SH,   SHD,  SHD,  SH,   SH,   SHL,  _,    _,    _,    _,    _  ],
+[SHL,  SH,   SH,   SH,   SH,   SH,   SH,   SH,   SH,   SHL,  _,    _,    _,    _  ],
+[SHL,  SH,   SH,   SHD,  SH,   SH,   SHD,  SH,   SH,   SHL,  _,    _,    _,    _  ],
+[_,    SHD,  SH,   SH,   SH,   SH,   SH,   SH,   SHD,  _,    _,    _,    _,    _  ],
+[_,    PT,   PTL,  PT,   PT,   PT,   PT,   PTL,  PT,   _,    _,    _,    _,    _  ],
+[_,    PT,   PT,   PT,   PT,   PT,   PT,   PT,   PT,   _,    _,    _,    _,    _  ],
+[PT,   PT,   PT,   _,    _,    _,    PT,   PT,   PT,   PT,   _,    _,    _,    _  ],
+[PT,   PT,   PT,   _,    _,    _,    PT,   PT,   PT,   PT,   _,    _,    _,    _  ],
+[PT,   PT,   PT,   _,    _,    _,    PT,   PT,   PT,   PT,   _,    _,    _,    _  ],
+[SO,   SO,   SO,   SO,   _,    _,    SO,   SO,   SO,   SO,   _,    _,    _,    _  ],
+[SO,   SOL,  SO,   SO,   _,    _,    SO,   SOL,  SO,   SO,   _,    _,    _,    _  ],
+];
+
+const SPR_WALK = [
+[BLS,  BLM,  BLB,  BLB,  BLB,  BLB,  BLD,  _,    _,    _,    _,    _,    _,    _  ],
+[BLS,  BLB,  BLB,  BLB,  BLB,  BLB,  BLB,  BLD,  _,    _,    _,    _,    _,    _  ],
+[BLD,  BLB,  BLB,  BLB,  BLM,  BLB,  BLB,  BLS,  _,    _,    _,    _,    _,    _  ],
+[_,    BK,   SK,   SK,   SK,   SK,   SK,   BK,   _,    _,    _,    _,    _,    _  ],
+[_,    BK,   SKL,  SK,   SK,   SK,   SKL,  SK,   BK,   _,    _,    _,    _,    _  ],
+[_,    BK,   BK,   BK,   BK,   SK,   BK,   BK,   BK,   BK,   CI,   CI,   CI,   CT ],
+[_,    BK,   BK,   BK,   BK,   SK,   BK,   BK,   BK,   SK,   _,    _,    _,    _  ],
+[_,    _,    BK,   SK,   SK,   SK,   SK,   SK,   BK,   _,    _,    _,    _,    _  ],
+[_,    _,    BK,   SK,   BK,   BK,   SK,   SK,   BK,   _,    _,    _,    _,    _  ],
+[_,    _,    BK,   SKD,  SK,   SK,   SKD,  SK,   BK,   _,    _,    _,    _,    _  ],
+[_,    _,    SHL,  SH,   SH,   SH,   SH,   SHL,  _,    _,    _,    _,    _,    _  ],
+[_,    SHL,  SH,   SH,   SHD,  SHD,  SH,   SH,   SHL,  _,    _,    _,    _,    _  ],
+[SHL,  SH,   SH,   SH,   SH,   SH,   SH,   SH,   SH,   SHL,  _,    _,    _,    _  ],
+[SHL,  SH,   SH,   SHD,  SH,   SH,   SHD,  SH,   SH,   SHL,  _,    _,    _,    _  ],
+[_,    SHD,  SH,   SH,   SH,   SH,   SH,   SH,   SHD,  _,    _,    _,    _,    _  ],
+[_,    PT,   PTL,  PT,   PT,   PT,   PT,   PTL,  PT,   _,    _,    _,    _,    _  ],
+[_,    PT,   PT,   PT,   PT,   PT,   PT,   PT,   PT,   _,    _,    _,    _,    _  ],
+[_,    PT,   PT,   PT,   _,    PT,   PT,   PT,   _,    _,    _,    _,    _,    _  ],
+[_,    _,    PT,   PT,   _,    PT,   PT,   _,    _,    _,    _,    _,    _,    _  ],
+[PT,   PT,   PT,   _,    _,    _,    PT,   PT,   PT,   _,    _,    _,    _,    _  ],
+[SO,   SO,   SO,   SO,   _,    _,    _,    SO,   SO,   SO,   _,    _,    _,    _  ],
+[SO,   SOL,  SO,   _,    _,    _,    _,    SO,   SOL,  SO,   _,    _,    _,    _  ],
+];
+
+const SPR_JUMP = [
+[BLS,  BLM,  BLB,  BLB,  BLB,  BLB,  BLD,  _,    _,    _,    _,    _,    _,    _  ],
+[BLS,  BLB,  BLB,  BLB,  BLB,  BLB,  BLB,  BLD,  _,    _,    _,    _,    _,    _  ],
+[BLD,  BLB,  BLB,  BLB,  BLM,  BLB,  BLB,  BLS,  _,    _,    _,    _,    _,    _  ],
+[_,    BK,   SK,   SK,   SK,   SK,   SK,   BK,   _,    _,    _,    _,    _,    _  ],
+[_,    BK,   SKL,  SK,   SK,   SK,   SKL,  SK,   BK,   _,    _,    _,    _,    _  ],
+[_,    BK,   BK,   BK,   BK,   SK,   BK,   BK,   BK,   BK,   CI,   CI,   CI,   CT ],
+[_,    BK,   BK,   BK,   BK,   SK,   BK,   BK,   BK,   SK,   _,    _,    _,    _  ],
+[_,    _,    BK,   SK,   SK,   SK,   SK,   SK,   BK,   _,    _,    _,    _,    _  ],
+[_,    _,    BK,   SK,   BK,   BK,   SK,   SK,   BK,   _,    _,    _,    _,    _  ],
+[_,    _,    BK,   SKD,  SK,   SK,   SKD,  SK,   BK,   _,    _,    _,    _,    _  ],
+[_,    _,    SHL,  SH,   SH,   SH,   SH,   SHL,  _,    _,    _,    _,    _,    _  ],
+[_,    SHL,  SH,   SH,   SHD,  SHD,  SH,   SH,   SHL,  _,    _,    _,    _,    _  ],
+[SHL,  SH,   SH,   SH,   SH,   SH,   SH,   SH,   SH,   SHL,  _,    _,    _,    _  ],
+[SHL,  SH,   SH,   SHD,  SH,   SH,   SHD,  SH,   SH,   SHL,  _,    _,    _,    _  ],
+[_,    SHD,  SH,   SH,   SH,   SH,   SH,   SH,   SHD,  _,    _,    _,    _,    _  ],
+[_,    PT,   PTL,  PT,   PT,   PT,   PT,   PTL,  PT,   _,    _,    _,    _,    _  ],
+[PT,   PT,   PT,   PT,   _,    _,    PT,   PT,   PT,   PT,   _,    _,    _,    _  ],
+[SO,   SO,   SO,   SO,   _,    _,    SO,   SO,   SO,   SO,   _,    _,    _,    _  ],
+[SO,   SOL,  SO,   _,    _,    _,    SO,   SOL,  SO,   _,    _,    _,    _,    _  ],
+];
+
+const PS = 4;
+const PW = 14 * PS;
+const PH = 22 * PS;
+
+function drawSprite(spr, x, y, flip) {
+  ctx.save();
+  if(flip){ ctx.translate(x+PW,y); ctx.scale(-1,1); } else ctx.translate(x,y);
+  for(let r=0;r<spr.length;r++)
+    for(let c=0;c<spr[r].length;c++){
+      if(spr[r][c]){ ctx.fillStyle=spr[r][c]; ctx.fillRect(c*PS,r*PS,PS,PS); }
+    }
+  ctx.restore();
+}
+
+function drawEnemy(x,y,frame,dead) {
+  const ES=3;
+  const ep = dead ? [
+    [_,W3,_,_,_,_,_,W3,_,_],
+    [_,_,W3,_,_,_,W3,_,_,_],
+    [_,_,_,W3,_,W3,_,_,_,_],
+  ] : (frame%2===0 ? [
+    [_,_,BK,BK,BK,BK,BK,BK,_,_],
+    [_,BK,W1,W1,W1,W1,W1,W1,BK,_],
+    [BK,W1,BK,W1,W1,W1,BK,W1,W1,BK],
+    [BK,W1,W1,W1,W1,W1,W1,W1,W1,BK],
+    [BK,W1,W2,W1,W1,W1,W2,W1,W1,BK],
+    [BK,W1,W1,W1,W1,W1,W1,W1,W1,BK],
+    [_,BK,W1,W1,W1,W1,W1,W1,BK,_],
+    [_,_,BK,W2,BK,BK,W2,BK,_,_],
+    [_,BK,BK,_,_,_,_,BK,BK,_],
+  ]:[
+    [_,_,BK,BK,BK,BK,BK,BK,_,_],
+    [_,BK,W1,W1,W1,W1,W1,W1,BK,_],
+    [BK,W1,BK,W1,W1,W1,BK,W1,W1,BK],
+    [BK,W1,W1,W1,W1,W1,W1,W1,W1,BK],
+    [BK,W2,W1,W1,W1,W1,W1,W1,W2,BK],
+    [BK,W1,W1,W1,W1,W1,W1,W1,W1,BK],
+    [_,BK,W1,W1,W1,W1,W1,W1,BK,_],
+    [_,BK,_,W2,BK,BK,W2,_,BK,_],
+    [BK,BK,_,_,_,_,_,_,BK,BK],
+  ]);
+  ctx.save(); ctx.translate(x,y);
+  for(let r=0;r<ep.length;r++)
+    for(let c=0;c<ep[r].length;c++)
+      if(ep[r][c]){ ctx.fillStyle=ep[r][c]; ctx.fillRect(c*ES,r*ES,ES,ES); }
+  ctx.restore();
+}
+
+function drawSignalToken(x,y,t){
+  ctx.save(); ctx.translate(x,y);
+  ctx.strokeStyle='#fff'; ctx.lineWidth=2;
+  ctx.beginPath(); ctx.arc(0,0,8,0,Math.PI*2); ctx.stroke();
+  ctx.fillStyle='#fff';
+  ctx.fillRect(-1,-6,2,12);
+  ctx.fillRect(-6,-1,12,2);
+  ctx.restore();
+}
+
+// GAME STATE
+let camX=0, score=0, lives=3, ticks=0, running=false;
+let playerNick='SIGNAL', killCount=0, coinCount=0, gameStatus='';
+let P, platforms, enemies, coins, particles, flagX;
+let prevJump=false;
+
+// Daha akıcı ve hisli hareket fizikleri
+const GRAV=0.38, JUMP=-9.5, SPMAX=3.2;
+const TARGET_FPS=60;
+let lastTime=0;
+
+function initLevel(){
+  camX=0; ticks=0; killCount=0; coinCount=0; flagX=3300;
+  P={x:80,y:250,vx:0,vy:0,w:PW,h:PH,onGround:false,dir:1,invincible:0,aTick:0,aFrame:0};
+
+  // Platformlara stratejik aralıklar eklendi
+  platforms=[
+    [0, 350, 350, 50], [480, 350, 250, 50], [880, 350, 300, 50],
+    [1350, 350, 200, 50], [1700, 350, 350, 50], [2200, 350, 250, 50],
+    [2600, 350, 400, 50], [3150, 350, 500, 50],
+    
+    [250, 260, 100, 18], [400, 180, 100, 18], [600, 240, 120, 18],
+    [780, 160, 100, 18], [1000, 250, 120, 18], [1200, 180, 100, 18],
+    [1450, 240, 100, 18], [1600, 150, 100, 18], [1850, 250, 120, 18],
+    [2050, 170, 100, 18], [2350, 240, 120, 18], [2550, 160, 100, 18],
+    [2850, 220, 120, 18]
+  ];
+
+  // Yerdeki canavarlar artırıldı, havada stratejik bekliyorlar
+  enemies=[
+    {x: 200, y: 322, vx: 0.9, w: 30, h: 27, dead: false, f: 0, dy: 0},
+    {x: 550, y: 322, vx: -1.0, w: 30, h: 27, dead: false, f: 0, dy: 0},
+    {x: 1000, y: 322, vx: 1.1, w: 30, h: 27, dead: false, f: 0, dy: 0},
+    {x: 1100, y: 322, vx: -0.9, w: 30, h: 27, dead: false, f: 0, dy: 0},
+    {x: 1400, y: 322, vx: 1.2, w: 30, h: 27, dead: false, f: 0, dy: 0},
+    {x: 1800, y: 322, vx: -1.1, w: 30, h: 27, dead: false, f: 0, dy: 0},
+    {x: 1950, y: 322, vx: 1.0, w: 30, h: 27, dead: false, f: 0, dy: 0},
+    {x: 2300, y: 322, vx: -1.3, w: 30, h: 27, dead: false, f: 0, dy: 0},
+    {x: 2700, y: 322, vx: 1.1, w: 30, h: 27, dead: false, f: 0, dy: 0},
+    {x: 2850, y: 322, vx: -1.2, w: 30, h: 27, dead: false, f: 0, dy: 0},
+
+    {x: 620, y: 213, vx: 0.7, w: 30, h: 27, dead: false, f: 0, dy: 0},
+    {x: 1020, y: 223, vx: -0.7, w: 30, h: 27, dead: false, f: 0, dy: 0},
+    {x: 1870, y: 223, vx: 0.8, w: 30, h: 27, dead: false, f: 0, dy: 0},
+    {x: 2370, y: 213, vx: -0.8, w: 30, h: 27, dead: false, f: 0, dy: 0}
+  ];
+
+  coins=[];
+  const coinSpots=[
+    [200, 310], [250, 310], [300, 310], [550, 310], [600, 310],
+    [950, 310], [1000, 310], [1400, 310], [1450, 310],
+    [280, 220], [320, 220], [430, 140], [640, 200], [680, 200],
+    [810, 120], [1040, 210], [1080, 210], [1230, 140], [1480, 200],
+    [1630, 110], [1880, 210], [1930, 210], [2080, 130],
+    [2380, 200], [2420, 200], [2580, 120], [2880, 180], [2920, 180]
+  ];
+  coinSpots.forEach(([cx,cy])=>coins.push({x:cx,y:cy,col:false}));
+  particles=[];
+}
+
+const keys={};
+document.addEventListener('keydown',e=>{ keys[e.code]=true; if(['Space','ArrowUp','ArrowLeft','ArrowRight'].includes(e.code)) e.preventDefault(); });
+document.addEventListener('keyup',e=>keys[e.code]=false);
+document.getElementById('nickInput').addEventListener('keydown',e=>{ if(e.code==='Enter') startGame(); });
+
+let tL=false,tR=false,tJ=false;
+[['tLeft',v=>tL=v],['tRight',v=>tR=v],['tJump',v=>tJ=v]].forEach(([id,fn])=>{
+  const el=document.getElementById(id);
+  el.addEventListener('touchstart',e=>{fn(true);e.preventDefault();},{passive:false});
+  el.addEventListener('touchend',()=>fn(false));
+  el.addEventListener('touchcancel',()=>fn(false));
+});
+
+const goL=()=>keys['ArrowLeft']||keys['KeyA']||tL;
+const goR=()=>keys['ArrowRight']||keys['KeyD']||tR;
+const goJ=()=>keys['ArrowUp']||keys['KeyW']||keys['Space']||tJ;
+
+function aabb(a,b){ return a.x<b.x+b.w&&a.x+a.w>b.x&&a.y<b.y+b.h&&a.y+a.h>b.y; }
+function spawnP(x,y,col,n,sp=4){
+  for(let i=0;i<n;i++) particles.push({x,y,vx:(Math.random()-.5)*sp,vy:(Math.random()-.5)*sp-2.5,life:28+Math.random()*18,maxLife:40,col,sz:2+Math.random()*3});
+}
+
+function update(dt=1){
+  ticks++;
+  
+  if(goL()){P.vx-=0.5*dt; P.dir=-1;}
+  if(goR()){P.vx+=0.5*dt; P.dir=1;}
+  P.vx*=Math.pow(0.82,dt);
+  if(Math.abs(P.vx)>SPMAX) P.vx=SPMAX*Math.sign(P.vx);
+
+  const jNow=goJ();
+  if(jNow&&!prevJump&&P.onGround){
+    P.vy=JUMP; P.onGround=false; spawnP(P.x+PW/2,P.y+PH,'#fff',4);
+  }
+  prevJump=jNow;
+
+  P.vy+=GRAV*dt; if(P.vy>20)P.vy=20;
+  P.x+=P.vx*dt; P.y+=P.vy*dt; P.onGround=false;
+
+  // Platformlara takılma / Duvara yapışma Bug'ı düzeltildi
+  for(const pl of platforms){
+    const pb={x:pl[0],y:pl[1],w:pl[2],h:pl[3]};
+    if(!aabb({x:P.x,y:P.y,w:P.w,h:P.h},pb)) continue;
+
+    const ox = Math.min(P.x+P.w, pb.x+pb.w) - Math.max(P.x, pb.x);
+    const oy = Math.min(P.y+P.h, pb.y+pb.h) - Math.max(P.y, pb.y);
+
+    if(oy < ox){ 
+      if(P.y < pb.y){ // Üstten çarptı (Yere indi)
+        P.y = pb.y - P.h; P.vy = 0; P.onGround = true;
+      } else { // Alttan çarptı (Kafasını vurdu)
+        P.y = pb.y + pb.h; P.vy = 1;
+      }
+    } else { // Yandan çarptı
+      if(P.x < pb.x) P.x = pb.x - P.w;
+      else P.x = pb.x + pb.w;
+      P.vx = 0;
+    }
+  }
+
+  for(const c of coins){
+    if(!c.col && Math.hypot(P.x+PW/2-c.x,P.y+PH/2-c.y)<20){
+      c.col=true; score+=10; coinCount++; spawnP(c.x,c.y,'#fff',6);
+    }
+  }
+
+  // Canavar Zekası (Uçurumdan Düşmeme ve Devriye) eklendi
+  for(const e of enemies){
+    if(e.dead)continue;
+    e.dy += GRAV*dt; e.y += e.dy*dt; e.x += e.vx*dt; e.f++;
+
+    let hitWallOrEdge = false;
+
+    for(const pl of platforms){
+      const pb={x:pl[0],y:pl[1],w:pl[2],h:pl[3]};
+      if(e.x+e.w > pb.x && e.x < pb.x+pb.w) {
+        if(e.y+e.h >= pb.y && e.y+e.h <= pb.y+20 && e.dy >= 0) {
+          e.y = pb.y - e.h; e.dy = 0;
+          // Uçurum algılayıcı
+          if (e.vx > 0 && e.x + e.w >= pb.x + pb.w) hitWallOrEdge = true;
+          if (e.vx < 0 && e.x <= pb.x) hitWallOrEdge = true;
+        }
+      }
+      if(aabb({x:e.x+e.vx, y:e.y, w:e.w, h:e.h}, pb)) hitWallOrEdge = true;
+    }
+
+    if(hitWallOrEdge) e.vx *= -1;
+    if(e.y > H+100) e.dead = true;
+    if(e.x < 0 || e.x > flagX + 200) e.vx *= -1;
+
+    // Canavar ezme (Stomp) Hitbox Bug'ı düzeltildi
+    if(P.invincible<=0 && aabb({x:P.x,y:P.y,w:P.w,h:P.h}, {x:e.x,y:e.y,w:e.w,h:e.h})){
+      if(P.vy > 0 && P.y + P.h - P.vy <= e.y + 15){ // Tam tepesine inme şartı
+        e.dead=true; score+=200; killCount++; P.vy=-8; spawnP(e.x+15,e.y+15,'#fff',12,6);
+      } else {
+        lives--; updateHUD(); spawnP(P.x+PW/2,P.y+PH/2,'#ff4444',14);
+        if(lives<=0){endGame(false);return;}
+        P.invincible=90; P.x=Math.max(camX+40,80);P.y=100;P.vx=0;P.vy=0;
+      }
+    }
+  }
+  if(P.invincible>0)P.invincible--;
+  if(P.y>H+80){
+    lives--; updateHUD();
+    if(lives<=0){endGame(false);return;}
+    P.x=camX+80;P.y=100;P.vx=0;P.vy=0;P.invincible=60;
+  }
+  if(P.x>flagX-30){endGame(true);return;}
+
+  const tc=P.x-W*0.38;
+  camX+=(tc-camX)*0.12; if(camX<0)camX=0;
+  if(Math.abs(P.vx)>0.3&&P.onGround)P.aTick++;
+  if(P.aTick>7){P.aTick=0;P.aFrame^=1;}
+
+  for(let i=particles.length-1;i>=0;i--){
+    const p=particles[i]; p.x+=p.vx;p.y+=p.vy;p.vy+=0.12;p.life--;
+    if(p.life<=0)particles.splice(i,1);
+  }
+  updateHUD();
+}
+
+function drawBG(){
+  ctx.fillStyle='#070707';ctx.fillRect(0,0,W,H);
+  ctx.strokeStyle='rgba(255,255,255,0.025)';ctx.lineWidth=1;
+  const GS=40;
+  for(let x=(-(camX*0.1)%GS+GS)%GS;x<W;x+=GS){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();}
+  for(let y=0;y<H;y+=GS){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();}
+  ctx.fillStyle='rgba(255,255,255,0.03)';
+  for(let i=0;i<10;i++){
+    const bx=((i*280-camX*0.2)%3000+3000)%3000;
+    if(bx>W+60)continue; ctx.fillRect(bx,H/2,30,H/2);
+  }
+  ctx.fillStyle='rgba(0,0,0,0.06)';
+  for(let y=0;y<H;y+=3)ctx.fillRect(0,y,W,1);
+}
+
+function drawPlatform(pl){
+  const sx=pl[0]-camX, sy=pl[1], pw=pl[2], ph=pl[3];
+  if(sx+pw<0||sx>W)return;
+  ctx.fillStyle='#111'; ctx.fillRect(sx,sy,pw,ph);
+  ctx.fillStyle='#555'; ctx.fillRect(sx,sy,pw,1);
+  ctx.fillStyle='#000'; ctx.fillRect(sx,sy+ph-1,pw,1);
+  ctx.strokeStyle='rgba(255,255,255,0.06)'; ctx.lineWidth=1;
+  for(let tx=0;tx<pw;tx+=32)ctx.strokeRect(sx+tx,sy,32,ph);
+  ctx.fillStyle='#333';ctx.fillRect(sx,sy,2,ph);ctx.fillRect(sx+pw-2,sy,2,ph);
+}
+
+function drawFlag(){
+  const sx=flagX-camX; if(sx<-20||sx>W)return;
+  ctx.fillStyle='#333';ctx.fillRect(sx,60,4,H-60);
+  ctx.fillStyle='#f0f0f0';ctx.fillRect(sx+4,60,50,32);
+  ctx.fillStyle='#000'; ctx.font='bold 11px "Share Tech Mono"'; ctx.textAlign='left'; ctx.fillText('R3ORDR',sx+8,80);
+  ctx.fillStyle='#555'; ctx.fillRect(sx-1,58,6,6);ctx.fillRect(sx-1,H-50-4,6,6);
+}
+
+function drawAll(){
+  drawBG();
+  for(const pl of platforms) drawPlatform(pl);
+  drawFlag();
+  for(const c of coins){
+    if(!c.col){ const sx=c.x-camX; if(sx>=-20&&sx<=W+20) drawSignalToken(sx,c.y,ticks); }
+  }
+  for(const e of enemies){
+    if(!e.dead){ const sx=e.x-camX; if(sx>=-60&&sx<=W+60) drawEnemy(sx,e.y,e.f,false); }
+  }
+  if(!(P.invincible>0&&Math.floor(ticks/4)%2===0)){
+    const sx=P.x-camX;
+    let spr = !P.onGround ? SPR_JUMP : (Math.abs(P.vx)>0.3 ? (P.aFrame?SPR_WALK:SPR_STAND) : SPR_STAND);
+    ctx.fillStyle='rgba(255,255,255,0.06)'; ctx.beginPath();ctx.ellipse(sx+PW/2,P.y+PH+2,PW/2,4,0,0,Math.PI*2);ctx.fill();
+    drawSprite(spr,sx,P.y,P.dir===-1);
+  }
+  for(const p of particles){
+    ctx.globalAlpha=Math.max(0,p.life/p.maxLife); ctx.fillStyle=p.col; ctx.fillRect(p.x-p.sz/2,p.y-p.sz/2,p.sz,p.sz);
+  }
+  ctx.globalAlpha=1;
+}
+
+function updateHUD(){
+  document.getElementById('scoreEl').textContent=String(score).padStart(5,'0');
+  document.getElementById('livesEl').textContent='❙'.repeat(Math.max(0,lives));
+  document.getElementById('nickEl').textContent=playerNick;
+}
+
+function showSection(id){
+  ['ovStart','ovGameOver','ovWin','ovShare'].forEach(s=>document.getElementById(s).style.display='none');
+  document.getElementById(id).style.display='flex';
+  document.getElementById('overlay').style.display='flex';
+}
+
+function endGame(won){
+  running=false; gameStatus=won?'REORDERED':'SIGNAL_LOST';
+  const pfx=won?'win':'go';
+  document.getElementById(pfx+'Score').textContent=String(score).padStart(5,'0');
+  document.getElementById(pfx+'Nick').textContent=playerNick;
+  document.getElementById(pfx+'Coins').textContent=coinCount;
+  document.getElementById(pfx+'Kills').textContent=killCount;
+  showSection(won?'ovWin':'ovGameOver');
+}
+
+function showShareScreen(){
+  document.getElementById('scNick').textContent=playerNick;
+  document.getElementById('scScore').textContent=String(score).padStart(5,'0');
+  document.getElementById('scCoins').textContent=coinCount;
+  document.getElementById('scKills').textContent=killCount;
+  document.getElementById('scStatus').textContent=gameStatus;
+  showSection('ovShare');
+}
+
+function backFromShare(){ showSection(gameStatus==='REORDERED'?'ovWin':'ovGameOver'); }
+
+function shareToX(){
+  const text=`🎮 R3ORDR RUN\n\nHandle: ${playerNick}\nScore: ${String(score).padStart(5,'0')}\nCoins: ${coinCount} | Kills: ${killCount}\nStatus: ${gameStatus}\n\n// REORIENT · RECONNECT · REORDER\n\n@R3ORDR\nMade by @traderibo123`;
+  window.open('https://twitter.com/intent/tweet?text='+encodeURIComponent(text),'_blank');
+}
+
+function startGame(){
+  const ni=document.getElementById('nickInput');
+  playerNick=(ni.value.trim().toUpperCase()||'SIGNAL').replace(/[^A-Z0-9_]/g,'').substring(0,12)||'SIGNAL';
+  score=0; lives=3; initLevel(); updateHUD(); document.getElementById('overlay').style.display='none'; running=true;
+}
+
+initLevel();
+function loop(ts=0){
+  requestAnimationFrame(loop);
+  const raw=ts-lastTime; lastTime=ts;
+  const dt=Math.min(raw,50)/(1000/TARGET_FPS);
+  if(running) update(dt);
+  drawAll();
+}
+loop();
+</script>
+</body>
+</html>
