@@ -789,7 +789,7 @@ function showShareScreen(){
 function backFromShare(){ showSection(gameStatus==='REORDERED'?'ovWin':'ovGameOver'); }
 
 function shareToX(){
-  const text=`🎮 R3ORDR RUN\n\nHandle: ${playerNick}\nScore: ${String(score).padStart(5,'0')}\nCoins: ${coinCount} | Kills: ${killCount}\nStatus: ${gameStatus}\n\n// REORIENT · RECONNECT · REORDER\n\n@R3ORDR\nMade by @traderibo123`;
+  const text=`🎮 R3ORDR RUN\n\nHandle: ${playerNick}\nScore: ${String(score).padStart(5,'0')}\nCoins: ${coinCount} | Kills: ${killCount}\nStatus: ${gameStatus}\n\n// REORIENT · RECONNECT · REORDER\n\n@R3ORDR\nMade by @traderibo123 https://r3ordr-run.vercel.app/`;
   window.open('https://twitter.com/intent/tweet?text='+encodeURIComponent(text),'_blank');
 }
 
